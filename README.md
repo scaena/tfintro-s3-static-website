@@ -38,7 +38,9 @@ O segundo é o `sample-iac-complete` é o resultado final desejado a ser alcanç
 $ mkdir hands-on
 ```
 
-### Arquivo `hands-on/main.tf`:
+### Inicializando um root module
+
+Arquivo `hands-on/main.tf`:
 
 ```terraform
 terraform {
@@ -59,7 +61,30 @@ provider "aws" {}
 $ terraform init
 ```
 
-### Arquivo `hands-on/bucket.tf`
+### Criando um bucket
+
+[Documentação do Provider AWS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket)
+
+[Documentação do resource para buckets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket)
+
+Arquivo `hands-on/bucket.tf`
+
+```terraform
+resource "aws_s3_bucket" "this" {
+  bucket        = "tfintro-hml.valterlisboa.net"
+  acl           = "public-read"
+  force_destroy = true
+}
+```
+
+```bash
+$ terraform validate
+$ terraform plan 
+```
+
+```bash
+$ terraform apply -auto-approve
+```
 
 ```terraform
 resource "aws_s3_bucket" "this" {
@@ -83,8 +108,9 @@ $ terraform plan
 $ terraform apply -auto-approve
 ```
 
+### Associando um registro DNS ao bucket
 
-### Arquivo `hands-on/dns.tf`:
+Arquivo `hands-on/dns.tf`:
 
 ```terraform
 resource "aws_route53_record" "this" {
@@ -131,3 +157,42 @@ Arquivo `hands-on/terraform.tfvars`:
 domain_name = "valterlisboa.net"
 route53_hosted_zone_id = "XXXXXXXXXXXXXXXXXXXXX"
 ```
+
+Arquivo `hands-on/bucket.tf`:
+
+```terraform
+resource "aws_s3_bucket" "this" {
+  bucket        = "tfintro-hml.${var.domain_name}"
+  acl           = "public-read"
+  force_destroy = true
+
+  website {
+    index_document = "index.html"
+    error_document = "error.html"
+  }
+}
+```
+
+Arquivo `hands-on/dns.tf`:
+
+```terraform
+resource "aws_route53_record" "this" {
+  zone_id = var.route53_hosted_zone_id
+  name    = "tfintro-hml.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = aws_s3_bucket.this.website_domain
+    zone_id                = aws_s3_bucket.this.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+```
+
+```bash
+$ terraform validate
+$ terraform plan 
+```
+
+### Fazendo deploy do bucket
+
