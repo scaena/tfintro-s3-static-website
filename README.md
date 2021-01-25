@@ -17,7 +17,7 @@ Para desenvolver os passos você precisa:
 
 ## Passo a passo
 
-```
+```bash
 $ mkdir hands-on
 ```
 
