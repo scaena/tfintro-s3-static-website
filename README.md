@@ -175,7 +175,9 @@ Acessar http://tfintro-hml.valterlisboa.net para testar, substituindo o domínio
 
 ### Criando variáveis
 
-Arquivo `hands-on/variables.tf`
+Um passo importante é externalizar valores de dentro de nosso root module de forma que seja possível optar por eles, isso torna os modules mais genéricos e reutilizaveis. Para nosso propósito vamos externalizar um valor que se repete ao longo de múltiplos ambientes que o é o domínio DNS (usado em ambos resources acima) e outro que é relativamente sensível pois é um ID interno da nossa conta AWS.
+
+Crie o arquivo `hands-on/variables.tf` conforme abaixo:
 
 ```terraform
 variable "domain_name" {
@@ -189,14 +191,16 @@ variable "route53_hosted_zone_id" {
 }
 ```
 
-Arquivo `hands-on/terraform.tfvars`:
+Para facilitar nossa vida e como estamos rodando um Terraform localmente, vamos criar um arquivo que vai alimentar os variables acima. O ideal é que este arquivo **não seja commitado no git**. De fato, o ideal é usar orquestradores como Terraform Cloud para armazenamento destes valores, para nosso exemplo vamos simplesmente armazenar ele localmente (o .gitignore também o está ignorando).
+
+Crie o arquivo `hands-on/terraform.tfvars` conforme abaixo:
 
 ```terraform
 domain_name = "valterlisboa.net"
 route53_hosted_zone_id = "XXXXXXXXXXXXXXXXXXXXX"
 ```
 
-Arquivo `hands-on/bucket.tf`:
+E altere os arquivos `hands-on/bucket.tf` e `hands-on/dns.tf` para receber as variables no lugar dos valores hard coded:
 
 ```terraform
 resource "aws_s3_bucket" "this" {
@@ -210,8 +214,6 @@ resource "aws_s3_bucket" "this" {
   }
 }
 ```
-
-Arquivo `hands-on/dns.tf`:
 
 ```terraform
 resource "aws_route53_record" "this" {
@@ -227,6 +229,8 @@ resource "aws_route53_record" "this" {
 }
 ```
 
+Repita o já conhecido processo de validate/plan e veja que não houve alterações, pois os valores substituidos batem com os estáticos anteriores.
+
 ```bash
 $ terraform validate
 $ terraform plan 
@@ -234,12 +238,16 @@ $ terraform plan
 
 ### Criando um módulo comum para homologação e produção
 
+Infra as Code no terraform só faz sentido se reusarmos os modules, agora vamos faezr um exercício relativamente mais avançado alterando o código para incluir um module em um sub diretório e chamá-lo múltiplas vezes para criar os ambientes de homologação e produção.
+
+Primeiro crie o diretório conforme abaixo e mova os arquivos que contém os resources.
+
 ```bash
 mkdir -p modules/static-site
 mv bucket.tf dns.tf modules/static-site/
 ```
 
-Arquivo `hands-on/modules/static-site/variables.tf`:
+Crie o arquivo `hands-on/modules/static-site/variables.tf` conforme abaixo, ele é similar ao `variables.tf` do root module mas possui uma variable a mais:
 
 ```terraform
 variable "name" {
@@ -258,7 +266,7 @@ variable "route53_hosted_zone_id" {
 }
 ```
 
-Arquivo `hands-on/modules/static-site/bucket.tf`:
+Altere os arquivo `hands-on/modules/static-site/bucket.tf` e `hands-on/modules/static-site/dns.tf` conforme abaixo, os detalhes disto serão discutidos na apresentação:
 
 ```terraform
 resource "aws_s3_bucket" "this" {
@@ -272,8 +280,6 @@ resource "aws_s3_bucket" "this" {
   }
 }
 ```
-
-Arquivo `hands-on/modules/static-site/dns.tf`:
 
 ```terraform
 resource "aws_route53_record" "this" {
@@ -289,7 +295,7 @@ resource "aws_route53_record" "this" {
 }
 ```
 
-Arquivo `hands-on/environments.tf`
+No root module crie o arquivo `hands-on/environments.tf` para chamar o module que criamos.
 
 ```terraform
 module "hml" {
@@ -301,25 +307,33 @@ module "hml" {
 }
 ```
 
+Repare no parâmetro `source`, ele aponta para o diretório que criamos. Também os outros parâmetros nada mais são do que os variables. Para que possamos atualizar os mapas de referências de módulos use o comando `get` abaixo:
+
 ```bash
 $ terraform get
 ```
+
+E novamente execute os comandos de teste
 
 ```bash
 $ terraform validate
 $ terraform plan 
 ```
 
+A saída é um pouco preocupante, mas não se aflija, durante a apresentação isso vai ser discutido em detalhes pois o plan está dizendo que resources serão destruídos. Depois da explicação os comandos abaixo vão corrigir o state movendo os resources do root module para o sub module.
+
 ```bash
 $ terraform state mv 'aws_route53_record.this' 'module.hml.aws_route53_record.this'
 $ terraform state mv 'aws_s3_bucket.this' 'module.hml.aws_s3_bucket.this'
 ```
 
+Agora podemos verificar que o `plan` não mais indica mudanças.
+
 ```bash
 $ terraform plan 
 ```
 
-Arquivo `hands-on/environments.tf`
+Finalmente vamos criar o ambiente de produção editando o arquivo `hands-on/environments.tf` conforma abaixo:
 
 ```terraform
 module "hml" {
@@ -339,17 +353,21 @@ module "prd" {
 }
 ```
 
+Como é um novo module referenciado é preciso executar `get` antes do tradicional check.
+
 ```bash
 $ terraform get
 $ terraform validate
 $ terraform plan 
 ```
 
+E aplicamos e criamos produção.
+
 ```bash
 $ terraform apply -auto-approve
 ```
 
-### Fazendo deploy no bucket de produção
+Veja que a partir de agora se precisarmos repetir o processo para diferentes sites é uma questão de repetir o o código com names diferentes. Vamos fazer deploy em produção para testar.
 
 ```bash
 $ aws s3 sync ../sample-static-site/ s3://tfintro.valterlisboa.net --acl public-read
