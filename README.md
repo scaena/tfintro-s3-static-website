@@ -21,6 +21,8 @@ Para desenvolver os passos você precisa:
 $ mkdir hands-on
 ```
 
+Arquivo `hands-on/main.tf`:
+
 ```terraform
 terraform {
   required_version = "~> 0.14"
@@ -35,5 +37,4 @@ terraform {
 
 provider "aws" {}
 ```
-
 
