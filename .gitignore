@@ -1,0 +1,9 @@
+# terraform
+*.tfstate*
+*.tfvars
+.terraform/
+.terraform.lock.hcl
+crash.log
+
+# hands on
+hands-on/
