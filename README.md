@@ -12,7 +12,7 @@ Domínios registrados externamente na AWS não vão funcionar para o teste.
 Para desenvolver os passos você precisa:
 
 - Instalar o Terraform, uma ferramenta de command line, conforme dito na introdução acima a versão usada foi a 0.14.5 e recomenda-se que ela seja a usada para evitar possíveis incompatibilidades : https://www.terraform.io/downloads.html.
-- Uma conta AWS para testes.
+- Uma conta AWS para testes e credenciais locais de acesso à esta conta. Estas credenciais podem ser estáticas ou usar outros métodos que você preferir, mas tome cuidado com a primeira abordagem nunca expondo a chave/segredo ou sua conta pode ser usada para fins ilícitos.
 - Um domínio DNS registrado no Route 53 dessa conta, para o teste que vamos fazer será usado o domínio do auto `valterlisboa.net`. Observe os comentários sobre custo
 - Para facilitar as coisas é recomendado que a variável de ambiente abaixo seja setada antes de começar. Isso vai forçar a usar a região da virgínia, que é mais barata do que  a do Brasil e possui todas as opções disponíveis de produtos AWS em General Availability:
 
